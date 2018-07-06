@@ -30,6 +30,7 @@
 <script>
 import slugify from 'slugify'
 import db from '@/firebase/init'
+import firebase from 'firebase'
 
 export default {
   data() {
@@ -43,7 +44,7 @@ export default {
   },
   methods: {
     signup() {
-      if (this.alias) {
+      if (this.alias && this.email && this.password) {
         this.slug = slugify(this.alias, {
           replacement: '-',
           lower: true,
@@ -52,14 +53,26 @@ export default {
         let ref = db.collection('users').doc(this.slug)
         ref.get().then(doc => {
           if (doc.exists) {
-            this.feedback = "This name is taken"
+            this.feedback = 'This name is already taken '
           } else {
             this.feedback = 'This is free'
+            firebase.auth().createUserWithEmailAndPassword(this.email, this.password)
+            .then(cred => {
+              ref.set({
+                alias: this.alias,
+                geolocation: null,
+                user_id: cred.user.uid
+              })
+            }).then(() => this.$router.push({ name: 'GMap' }))
+            .catch(err => {
+              console.log(err)
+              this.feedback = err.message
+            })
           }
         })
         console.log(this.slug)
       } else {
-        this.feedback = "You must enter an alias to continue"
+        this.feedback = "You must fill out all fields to continue"
       }
     }
   }
